@@ -8,22 +8,20 @@
 """ This is an interactive MiniMap that is reading player position with
     PyTesseract OCR and visualizing it on a New World Map with live marker """ 
 # ---------------------------------------------------------------------------
-
-import sys
-from PyQt5.QtCore    import *
-from PyQt5.QtGui     import *
-from PyQt5.QtWidgets import *
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEngineProfile, QWebEnginePage
+from PyQt5.QtWebEngineWidgets import *
+from PyQt5.QtCore          import *
+from PyQt5.QtGui        import *
+from PyQt5.QtWidgets import *
 from win32 import win32gui
-import win32ui
 from ctypes import windll
 from PIL import Image
 import numpy as np
 import pytesseract
+import win32ui
+import sys
 import cv2
 import re
-from PyQt5.QtWebEngineWidgets import *
-
 # ---------------------------------------------------------------------------
 
 TESSERACT_PATH = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
