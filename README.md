@@ -10,11 +10,15 @@
 * Cross-Platform (untested)
 
 # How to use:
-1. Install PyTesseract on your system
-2. Edit PyTesseract path in MiniMap.py
-3. Start & Log into Game
-4. Put your cursor where you want the GUI to spawn (Open Map ingame so you can see your mouse)
-5. Run Script
+1. Install Pytesseract on your system
+`pip install pytesseract`
+`https://github.com/UB-Mannheim/tesseract/wiki`
+3. Install Script requirements<br>
+`pip install -r requirements.txt`
+4. Edit Pytesseract path in MiniMap.py
+5. Start & Log into Game
+6. Put your cursor where you want the GUI to spawn (Open Map ingame so you can see your mouse)
+7. Run Script
 
 # Bugs
 * MiniMap is an active Window and can could cause player leaving focus to MiniMap by accidently clicking on it while playing
