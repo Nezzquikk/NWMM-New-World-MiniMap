@@ -10,8 +10,8 @@
 * Cross-Platform (untested)
 
 # How to use:
-1. Install Pytesseract on your system
-`pip install pytesseract`
+1. Install Pytesseract on your system<br>
+`pip install pytesseract`<br>
 `https://github.com/UB-Mannheim/tesseract/wiki`
 3. Install Script requirements<br>
 `pip install -r requirements.txt`
