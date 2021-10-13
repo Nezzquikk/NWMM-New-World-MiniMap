@@ -1,0 +1,6 @@
+pywin32==301
+opencv_python==4.5.3.56
+numpy==1.21.2
+pytesseract==0.3.8
+Pillow==8.3.2
+PyQt5==5.15.4
