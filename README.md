@@ -1,4 +1,4 @@
-# NWMM---New-World-MiniMap
+# NWMM-New-World-MiniMap
 
 # Features:
 * Automatically grabs position from "New World" Instance
