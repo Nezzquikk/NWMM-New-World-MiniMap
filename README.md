@@ -17,8 +17,9 @@
 `pip install -r requirements.txt`
 4. Edit Pytesseract path in MiniMap.py
 5. Start & Log into Game
-6. Put your cursor where you want the GUI to spawn (Open Map ingame so you can see your mouse)
-7. Run Script
+6. Enable "Show FPS" in Settings -> Visuals
+7. Put your cursor where you want the GUI to spawn (Open Map ingame so you can see your mouse)
+8. Run Script
 
 # Bugs
 * MiniMap is an active Window and can could cause player leaving focus to MiniMap by accidently clicking on it while playing
