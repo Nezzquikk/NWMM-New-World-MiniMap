@@ -75,7 +75,7 @@ class Worker(QObject):
                 bmpstr, 'raw', 'BGRX', 0, 1)
             w, h = im.size
             """ OCR section for 1920 x 1080 """
-            screenshot = im.crop((DISPLAY_SIZE[0] - 268, 19, 1920, 35))
+            screenshot = im.crop((DISPLAY_SIZE[0] - 268, 19, DISPLAY_SIZE[0], 35))
             win32gui.DeleteObject(saveBitMap.GetHandle())
             saveDC.DeleteDC()
             mfcDC.DeleteDC()
