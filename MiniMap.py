@@ -100,7 +100,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("New World Interactive Map by Nezzquikk")
         self.initUI()
         """ Tesseract Path """
-        pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
+        pytesseract.pytesseract.tesseract_cmd = "Tesseract-OCR\\tesseract.exe"
         """ if you want executable (Tesseract required in folder) use pyInstaller"""
         # pyinstaller -F --add-data "Tesseract-OCR;Tesseract-OCR" app.py || "Tesseract-OCR\\tesseract.exe" 
         self.webview = QWebEngineView()
@@ -111,7 +111,27 @@ class MainWindow(QMainWindow):
         self.webview.setUrl(QUrl("https://www.newworld-map.com/#/"))
         self.setCentralWidget(self.webview)
         self.webview.loadFinished.connect(self.onLoadFinished)
+        self.webview.setContextMenuPolicy(Qt.CustomContextMenu)
         self.latestCoordinate = [0,0]
+        self.webview.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.webview.customContextMenuRequested.connect(self.on_context_menu)
+        self.AUTO_FOLLOW_ON = True
+        self.popMenu = QMenu(self)
+        self.auto_follow_button = QAction("Disable auto-follow")
+        self.popMenu.addAction(self.auto_follow_button)
+        self.popMenu.triggered.connect(self.toggleAutoFollow)
+ 
+    def on_context_menu(self, point):
+        self.popMenu.exec_(self.webview.mapToGlobal(point))
+
+
+    def toggleAutoFollow(self):
+        print(self.AUTO_FOLLOW_ON)
+        if self.AUTO_FOLLOW_ON == True:
+            self.auto_follow_button.setText('Enable auto-follow') 
+        else:
+            self.auto_follow_button.setText('Disable auto-follow')
+        self.AUTO_FOLLOW_ON = not self.AUTO_FOLLOW_ON
 
 
     def onLoadFinished(self):
@@ -153,11 +173,16 @@ class MainWindow(QMainWindow):
         self.worker.progress.connect(self.setMarker)
         self.thread.start()
     
+    def follow_marker(self, location):
+        if self.AUTO_FOLLOW_ON == True:
+            x,y = location
+            self.webview.page().runJavaScript("""window.mapX.panTo({lat: %s-14336, lng: %s});""" % (y,x))
     
     def setMarker(self, location):
         """ Credits to (@Seler - https://github.com/seler) for centering of player position"""
         x,y = location
-        self.webview.page().runJavaScript("""window.markerX.setLatLng({lat: %s-14336, lng: %s});window.mapX.panTo({lat: %s-14336, lng: %s});""" % (y,x,y,x))
+        self.webview.page().runJavaScript("""window.markerX.setLatLng({lat: %s-14336, lng: %s});""" % (y,x))
+        self.follow_marker(location)
         self.latestCoordinate = [x, y]
     
     
@@ -166,4 +191,4 @@ if __name__ == '__main__':
     w = MainWindow()
     w.show()
     w.loop()
-    sys.exit(app.exec_())         
+    sys.exit(app.exec_())
