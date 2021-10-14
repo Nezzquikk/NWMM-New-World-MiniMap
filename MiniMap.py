@@ -3,7 +3,7 @@
 #----------------------------------------------------------------------------
 # Created By  : Nezzquikk
 # Created Date: 2021/10/13
-# version ='1.0'
+# version ='0.8'
 # ---------------------------------------------------------------------------
 """ This is an interactive MiniMap that is reading player position with
     PyTesseract OCR and visualizing it on a New World Map with live marker """ 
