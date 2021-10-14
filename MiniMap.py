@@ -3,7 +3,7 @@
 #----------------------------------------------------------------------------
 # Created By  : Nezzquikk
 # Created Date: 2021/10/13
-# version ='0.8.1'
+# version ='0.9.0'
 # ---------------------------------------------------------------------------
 """ This is an interactive MiniMap that is reading player position with
     PyTesseract OCR and visualizing it on a New World Map with live marker """ 
@@ -27,7 +27,6 @@ import re
 TESSERACT_PATH = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 DISPLAY_SIZE = [windll.user32.GetSystemMetrics(0),windll.user32.GetSystemMetrics(1)]
 SIZE_OF_MINIMAP = (250,250)
-FRAMELESS_WINDOW = True
 
 """ PyQT5 is blocking main thread for rendering GUI thus using QThread and QWorker
     for processing OCR and player positioning """
@@ -97,20 +96,21 @@ class Worker(QObject):
 class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
-        self.setWindowTitle("New World Interactive Map by Nezzquikk")
+        self.setWindowTitle("NWMM")
         self.AUTO_FOLLOW_ON = True
-        self.ISCIRCULAR = True
+        self.ISCIRCULAR = False
         self.STAYONTOP = True
+        self.ISFRAMED = True
         self.initUI()
         """ Tesseract Path """
         pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
+        # pytesseract.pytesseract.tesseract_cmd = "Tesseract-OCR\\tesseract.exe"
         """ if you want executable (Tesseract required in folder) use pyInstaller"""
         # pyinstaller -F --add-data "Tesseract-OCR;Tesseract-OCR" MiniMap.py || "Tesseract-OCR\\tesseract.exe" 
         self.webview = QWebEngineView()
         webpage = QWebEnginePage(self.webview)
-        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.move(QCursor.pos())
+        self.setWindowFlags(Qt.WindowStaysOnTopHint)
         self.useragent = QWebEngineProfile(self.webview)
         self.useragent.defaultProfile().setHttpUserAgent("Mozilla/5.0 (Linux; Android 4.2.1; en-us; Nexus 5 Build/JOP40D) AppleWebKit/535.19 (KHTML, like Gecko; googleweblight) Chrome/38.0.1025.166 Mobile Safari/535.19")
         self.webview.setPage(webpage)
@@ -122,19 +122,34 @@ class MainWindow(QMainWindow):
         self.webview.setContextMenuPolicy(Qt.CustomContextMenu)
         self.webview.customContextMenuRequested.connect(self.on_context_menu)
         self.initContextMenu()
- 
+        
+        
+    def initUI(self, isWindowFramed=True):
+        radius = 200.0 if self.ISCIRCULAR == True else 0.0
+        self.painterPath = QPainterPath()
+        self.resize(*SIZE_OF_MINIMAP) # size of MiniMap
+        if isWindowFramed == False:
+            self.painterPath.addRoundedRect(QRectF(self.rect()), radius, radius)
+        mask = QRegion(self.painterPath.toFillPolygon().toPolygon())
+        self.setMask(mask)
+        # self.setDisabled(True)
+        # self.setAttribute(Qt.WA_X11DoNotAcceptFocus)
+
 
     def initContextMenu(self):
         self.popMenu = QMenu(self)
         self.toggle_follow_button = QAction("Disable auto-follow")
-        self.toggle_viewmode_button = QAction("Change to Rectangular")
-        self.popMenu.addAction(self.toggle_follow_button)
-        self.toggle_follow_button.triggered.connect(self.toggleAutoFollow)
-        self.popMenu.addAction(self.toggle_viewmode_button)
-        self.toggle_viewmode_button.triggered.connect(self.toggleViewMode)
+        self.toggle_viewmode_button = QAction("Change to Circular")
+        self.toggle_WindowFrame_button = QAction("Disable Window Frame")
         self.toggle_stayOnTop_button = QAction("Disable Stay on Top")
+        self.popMenu.addAction(self.toggle_follow_button)
         self.popMenu.addAction(self.toggle_stayOnTop_button)
+        self.popMenu.addAction(self.toggle_viewmode_button)
+        self.popMenu.addAction(self.toggle_WindowFrame_button)
+        self.toggle_follow_button.triggered.connect(self.toggleAutoFollow)
+        self.toggle_viewmode_button.triggered.connect(self.toggleViewMode)
         self.toggle_stayOnTop_button.triggered.connect(self.toggleStayOnTop)
+        self.toggle_WindowFrame_button.triggered.connect(self.toggleWindowFrame)
         
 
     def on_context_menu(self, point):
@@ -144,22 +159,37 @@ class MainWindow(QMainWindow):
     def toggleViewMode(self):
         self.ISCIRCULAR = not self.ISCIRCULAR
         if self.ISCIRCULAR == True:
-            self.initUI()
-            self.toggle_viewmode_button.setText('Change to Circular') 
+            self.initUI(isWindowFramed=False)
+            self.toggle_viewmode_button.setText('Change to Rectangular') 
         else:
-            self.initUI()
-            self.toggle_viewmode_button.setText('Change to Rectangular')
+            self.initUI(isWindowFramed=False)
+            self.toggle_viewmode_button.setText('Change to Circular')
+        self.show()
+        
 
+    def toggleWindowFrame(self):
+        self.ISFRAMED = not self.ISFRAMED
+        if self.ISFRAMED == True:
+            self.toggle_WindowFrame_button.setText('Disable Window Frame') 
+            self.initUI(isWindowFramed=True)
+        else:
+            self.toggle_WindowFrame_button.setText('Enable Window Frame') 
+            self.initUI(isWindowFramed=False)
+        
+        self.show()
+        
+        
 
     def toggleStayOnTop(self):
-        if self.STAYONTOP == True:
-            self.setWindowFlags(self.windowFlags() & ~Qt.WindowStaysOnTopHint)
-            self.toggle_stayOnTop_button.setText('Enable Stay On Top') 
-        else:
-            self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
-            self.toggle_stayOnTop_button.setText('Disable Stay on Top')
-        self.show()
         self.STAYONTOP = not self.STAYONTOP
+        if self.STAYONTOP == True:
+            self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
+            self.toggle_stayOnTop_button.setText('Disable Stay On Top') 
+        else:
+            self.setWindowFlags(self.windowFlags() & ~Qt.WindowStaysOnTopHint)
+            self.toggle_stayOnTop_button.setText('Enable Stay on Top')
+        self.show()
+        
 
 
     def toggleAutoFollow(self):
@@ -173,26 +203,27 @@ class MainWindow(QMainWindow):
 
     def onLoadFinished(self):
         """ Remove unnessecary stuff from Map """
-        self.webview.page().runJavaScript('document.querySelector("#main > div.v-application--wrap > header > div").style="height: 56px;margin-left: 40%;"')
-        self.webview.page().runJavaScript('document.querySelector("body").style="overflow: hidden;"')
-        self.webview.page().runJavaScript('document.querySelector("#nn_player").remove()')
-        self.webview.page().runJavaScript('document.querySelector("#main > div.v-application--wrap > footer").remove()')
-        self.webview.page().runJavaScript('document.querySelector("#main > div.v-application--wrap > header > div > button:nth-child(4)").remove()')
-        self.webview.page().runJavaScript('document.querySelector("#main > div.v-application--wrap > main").style = "padding: 0px 0px 0px";')
-        self.webview.page().runJavaScript("""var style = document.createElement("style");style.innerHTML = 'body::-webkit-scrollbar {display: none;}';document.head.appendChild(style);""")
-        self.webview.page().runJavaScript('document.querySelector("#main > div.v-application--wrap > aside").style = "margin-left:7%";')
-        self.webview.page().runJavaScript('setTimeout(() => {window.mapX=document.getElementById("map").__vue__.mapObject;window.markerX = window.L.marker({lat: 0, lng: 0});window.markerX.addTo(window.mapX);},1500);')
-        
-
-    def initUI(self):
-        if FRAMELESS_WINDOW == True:
-            # self.setWindowFlags(Qt.Tool)
-            radius = 200.0 if self.ISCIRCULAR == True else 0.0
-            self.painterPath = QPainterPath()
-            self.resize(*SIZE_OF_MINIMAP) # size of MiniMap
-            self.painterPath.addRoundedRect(QRectF(self.rect()), radius, radius)
-            mask = QRegion(self.painterPath.toFillPolygon().toPolygon())
-            self.setMask(mask)
+        self.webview.page().runJavaScript("""
+        document.querySelector("#main > div.v-application--wrap > header > div").style="height: 56px;margin-left: 40%;"
+        document.querySelector("body").style="overflow: hidden;"
+        document.querySelector("#nn_player").remove()
+        document.querySelector("#main > div.v-application--wrap > footer").remove()
+        document.querySelector("#main > div.v-application--wrap > header > div > button:nth-child(4)").remove()
+        document.querySelector("#main > div.v-application--wrap > main").style = "padding: 0px 0px 0px";
+        var style = document.createElement("style");style.innerHTML = 'body::-webkit-scrollbar {display: none;}';document.head.appendChild(style);
+        document.querySelector("#main > div.v-application--wrap > aside").style = "margin-left:7%";
+        setTimeout(() => {window.mapX=document.getElementById("map").__vue__.mapObject;window.markerX = window.L.marker({lat: 0, lng: 0});window.markerX.addTo(window.mapX);},1500);
+        var x1 = setInterval(function() {
+            if (document.querySelector("#main > div.v-menu__content.theme--light.menuable__content__active") !== null) {
+                document.querySelector("#main > div.v-application--wrap > header").class = "height: 56px; margin-top: 0px; transform: translateY(0px); left: 0px; right: 0px; background-color: rgba(0, 0, 0, 0.0);"
+                document.querySelector("#main > div.v-menu__content.theme--light.menuable__content__active").style = "max-height: 95%; min-width: 350px; top: 19px; left: 0px; transform-origin: left top; z-index: 9";
+                document.querySelector("#menu_resources > div:nth-child(1) > div").remove()
+                document.querySelector("#menu_resources > div:nth-child(3) > div").remove()
+                document.querySelector("#menu_resources > div:nth-child(3)").style = "margin-left:25%;"
+                clearInterval(x1)
+            }
+        }, 200);
+        """)
 
 
     def loop(self):
