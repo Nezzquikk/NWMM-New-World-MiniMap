@@ -27,7 +27,12 @@
 INFO: It may be possible that one or the other library I use in this project is not compatible with newest version of Python
 I recommend using Python 3.8 (I myself use Python 3.8.8)
 
-
+# OCR-Optimization
+A few filters applied ontop of the image crop to achieve better daylight OCR results<br>
+Original<br>
+![image](https://user-images.githubusercontent.com/62097381/137309863-f96e4095-3d73-4ed6-9d79-19bbfc5d43fc.png)<br>
+filter applied::<br>
+![image](https://user-images.githubusercontent.com/62097381/137309633-51ea348c-e078-4d71-92b3-bd05ca5928fe.png)
 # Images
 ![image](https://user-images.githubusercontent.com/62097381/137212082-34e986b5-79fc-48df-a3a2-7721412273d6.png)
 <img src="https://user-images.githubusercontent.com/62097381/137209894-1ecd623c-2650-4149-9b69-5ed74a53b612.png" >
