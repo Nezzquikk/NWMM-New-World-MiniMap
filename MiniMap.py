@@ -3,7 +3,7 @@
 #----------------------------------------------------------------------------
 # Created By  : Nezzquikk
 # Created Date: 2021/10/13
-# version ='0.8'
+# version ='0.8.1'
 # ---------------------------------------------------------------------------
 """ This is an interactive MiniMap that is reading player position with
     PyTesseract OCR and visualizing it on a New World Map with live marker """ 
@@ -25,10 +25,9 @@ import re
 # ---------------------------------------------------------------------------
 
 TESSERACT_PATH = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-CIRCULAR_WINDOW = True
+DISPLAY_SIZE = [windll.user32.GetSystemMetrics(0),windll.user32.GetSystemMetrics(1)]
 SIZE_OF_MINIMAP = (250,250)
 FRAMELESS_WINDOW = True
-
 
 """ PyQT5 is blocking main thread for rendering GUI thus using QThread and QWorker
     for processing OCR and player positioning """
@@ -49,6 +48,7 @@ class Worker(QObject):
                     low_contrast_mask = np.absolute(image - blurred) < threshold
                     np.copyto(sharpened, image, where=low_contrast_mask)
                 return sharpened
+
 
             hwnd = win32gui.FindWindow(None, 'New World')
             if hwnd == 0:
@@ -75,7 +75,7 @@ class Worker(QObject):
                 bmpstr, 'raw', 'BGRX', 0, 1)
             w, h = im.size
             """ OCR section for 1920 x 1080 """
-            screenshot = im.crop((1652, 19, 1920, 35))
+            screenshot = im.crop((DISPLAY_SIZE[0] - 268, 19, 1920, 35))
             win32gui.DeleteObject(saveBitMap.GetHandle())
             saveDC.DeleteDC()
             mfcDC.DeleteDC()
@@ -98,13 +98,19 @@ class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
         self.setWindowTitle("New World Interactive Map by Nezzquikk")
+        self.AUTO_FOLLOW_ON = True
+        self.ISCIRCULAR = True
+        self.STAYONTOP = True
         self.initUI()
         """ Tesseract Path """
         pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
         """ if you want executable (Tesseract required in folder) use pyInstaller"""
-        # pyinstaller -F --add-data "Tesseract-OCR;Tesseract-OCR" app.py || "Tesseract-OCR\\tesseract.exe" 
+        # pyinstaller -F --add-data "Tesseract-OCR;Tesseract-OCR" MiniMap.py || "Tesseract-OCR\\tesseract.exe" 
         self.webview = QWebEngineView()
         webpage = QWebEnginePage(self.webview)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.move(QCursor.pos())
         self.useragent = QWebEngineProfile(self.webview)
         self.useragent.defaultProfile().setHttpUserAgent("Mozilla/5.0 (Linux; Android 4.2.1; en-us; Nexus 5 Build/JOP40D) AppleWebKit/535.19 (KHTML, like Gecko; googleweblight) Chrome/38.0.1025.166 Mobile Safari/535.19")
         self.webview.setPage(webpage)
@@ -115,22 +121,53 @@ class MainWindow(QMainWindow):
         self.latestCoordinate = [0,0]
         self.webview.setContextMenuPolicy(Qt.CustomContextMenu)
         self.webview.customContextMenuRequested.connect(self.on_context_menu)
-        self.AUTO_FOLLOW_ON = True
-        self.popMenu = QMenu(self)
-        self.auto_follow_button = QAction("Disable auto-follow")
-        self.popMenu.addAction(self.auto_follow_button)
-        self.popMenu.triggered.connect(self.toggleAutoFollow)
+        self.initContextMenu()
  
+
+    def initContextMenu(self):
+        self.popMenu = QMenu(self)
+        self.toggle_follow_button = QAction("Disable auto-follow")
+        self.toggle_viewmode_button = QAction("Change to Rectangular")
+        self.popMenu.addAction(self.toggle_follow_button)
+        self.toggle_follow_button.triggered.connect(self.toggleAutoFollow)
+        self.popMenu.addAction(self.toggle_viewmode_button)
+        self.toggle_viewmode_button.triggered.connect(self.toggleViewMode)
+        self.toggle_stayOnTop_button = QAction("Disable Stay on Top")
+        self.popMenu.addAction(self.toggle_stayOnTop_button)
+        self.toggle_stayOnTop_button.triggered.connect(self.toggleStayOnTop)
+        
+
     def on_context_menu(self, point):
         self.popMenu.exec_(self.webview.mapToGlobal(point))
+
+
+    def toggleViewMode(self):
+        self.ISCIRCULAR = not self.ISCIRCULAR
+        if self.ISCIRCULAR == True:
+            self.initUI()
+            self.toggle_viewmode_button.setText('Change to Circular') 
+        else:
+            self.initUI()
+            self.toggle_viewmode_button.setText('Change to Rectangular')
+
+
+    def toggleStayOnTop(self):
+        if self.STAYONTOP == True:
+            self.setWindowFlags(self.windowFlags() & ~Qt.WindowStaysOnTopHint)
+            self.toggle_stayOnTop_button.setText('Enable Stay On Top') 
+        else:
+            self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
+            self.toggle_stayOnTop_button.setText('Disable Stay on Top')
+        self.show()
+        self.STAYONTOP = not self.STAYONTOP
 
 
     def toggleAutoFollow(self):
         print(self.AUTO_FOLLOW_ON)
         if self.AUTO_FOLLOW_ON == True:
-            self.auto_follow_button.setText('Enable auto-follow') 
+            self.toggle_follow_button.setText('Enable auto-follow') 
         else:
-            self.auto_follow_button.setText('Disable auto-follow')
+            self.toggle_follow_button.setText('Disable auto-follow')
         self.AUTO_FOLLOW_ON = not self.AUTO_FOLLOW_ON
 
 
@@ -149,16 +186,13 @@ class MainWindow(QMainWindow):
 
     def initUI(self):
         if FRAMELESS_WINDOW == True:
-            self.setWindowFlags(Qt.Tool)
-            radius = 200.0 if CIRCULAR_WINDOW == True else 0.0
-            path = QPainterPath()
+            # self.setWindowFlags(Qt.Tool)
+            radius = 200.0 if self.ISCIRCULAR == True else 0.0
+            self.painterPath = QPainterPath()
             self.resize(*SIZE_OF_MINIMAP) # size of MiniMap
-            path.addRoundedRect(QRectF(self.rect()), radius, radius)
-            mask = QRegion(path.toFillPolygon().toPolygon())
+            self.painterPath.addRoundedRect(QRectF(self.rect()), radius, radius)
+            mask = QRegion(self.painterPath.toFillPolygon().toPolygon())
             self.setMask(mask)
-            self.move(QCursor.pos())
-            self.setWindowFlags( Qt.WindowStaysOnTopHint)
-            self.setAttribute(Qt.WA_TranslucentBackground)
 
 
     def loop(self):
@@ -173,11 +207,13 @@ class MainWindow(QMainWindow):
         self.worker.progress.connect(self.setMarker)
         self.thread.start()
     
+
     def follow_marker(self, location):
         if self.AUTO_FOLLOW_ON == True:
             x,y = location
             self.webview.page().runJavaScript("""window.mapX.panTo({lat: %s-14336, lng: %s});""" % (y,x))
     
+
     def setMarker(self, location):
         """ Credits to (@Seler - https://github.com/seler) for centering of player position"""
         x,y = location
@@ -185,10 +221,10 @@ class MainWindow(QMainWindow):
         self.follow_marker(location)
         self.latestCoordinate = [x, y]
     
-    
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     w = MainWindow()
     w.show()
     w.loop()
-    sys.exit(app.exec_())
+    sys.exit(app.exec_())         
