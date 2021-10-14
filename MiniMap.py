@@ -100,7 +100,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("New World Interactive Map by Nezzquikk")
         self.initUI()
         """ Tesseract Path """
-        pytesseract.pytesseract.tesseract_cmd = "Tesseract-OCR\\tesseract.exe"
+        pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
         """ if you want executable (Tesseract required in folder) use pyInstaller"""
         # pyinstaller -F --add-data "Tesseract-OCR;Tesseract-OCR" app.py || "Tesseract-OCR\\tesseract.exe" 
         self.webview = QWebEngineView()
