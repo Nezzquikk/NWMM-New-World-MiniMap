@@ -4,6 +4,10 @@
 * Automatically grabs position from "New World" Instance
 * Live visualisation of player position on MiniMap
 * Circular & rectangular Map
+* Stay-On-Top making the Map look like an Overlay!
+* Automatically detects opened ingame menu for disabling overlaying
+* Informative and structured debugging console
+* Auto-version Checker upon startup
 * Configurable
 * Auto-Follow (credits to @seler)
 * Resizeable
