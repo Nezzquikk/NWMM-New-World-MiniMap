@@ -18,15 +18,16 @@
 4. Edit Pytesseract path in MiniMap.py
 5. Start & Log into Game
 6. Enable "Show FPS" in Settings -> Visuals
-7. Put your cursor where you want the GUI to spawn (Open Map ingame so you can see your mouse)
 8. Run Script
+9. Configurate your Map
+10. Press "Remove" on your Keyboard to enable Overlaying, disable it with pressing "Insert" twice.
 
 # Bugs
-* MiniMap is an active Window and can could cause player leaving focus to MiniMap by accidently clicking on it while playing
 * Bad OCR in daylight
 
 INFO: It may be possible that one or the other library I use in this project is not compatible with newest version of Python
 I recommend using Python 3.8 (I myself use Python 3.8.8)
+Please downgrade or use the compiled version of this MiniMap.
 
 # OCR-Optimization
 A few filters applied ontop of the image crop to achieve better daylight OCR results<br>
