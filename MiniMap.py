@@ -3,7 +3,7 @@
 #----------------------------------------------------------------------------
 # Created By  : Nezzquikk
 # Created Date: 2021/10/13
-# version ='1.0.0'
+# version ='1.0.5'
 # ---------------------------------------------------------------------------
 """ This is an interactive MiniMap that is reading player position with
     PyTesseract OCR and visualizing it on a New World Map with live marker """ 
@@ -22,15 +22,21 @@ from rich import print
 from PIL import Image
 import numpy as np
 import pytesseract
+import pyautogui
 import requests
 import win32ui
 import time
 import sys
 import cv2
 import re
+import os
 # ---------------------------------------------------------------------------
+try:
+    os.chdir(sys._MEIPASS)
+except:
+    pass
 console = Console()
-RELEASE_VERSION = [False, "v1.0.0"]
+COMPILED_VERSION = [False, "v1.0.5"]
 TESSERACT_PATH = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 DISPLAY_SIZE = [windll.user32.GetSystemMetrics(0),windll.user32.GetSystemMetrics(1)]
 SIZE_OF_MINIMAP = (250,250)
@@ -58,26 +64,30 @@ class Worker(QObject):
     progress = pyqtSignal(object)
     lastCoordinate = [0,0]
 
-
     def run(self):
+        def unsharp_mask(image, kernel_size=(5, 5), sigma=1.0, amount=1.0, threshold=0):
+            image = np.array(image)
+            blurred = cv2.GaussianBlur(image, kernel_size, sigma)
+            sharpened = float(amount + 1) * image - float(amount) * blurred
+            sharpened = np.maximum(sharpened, np.zeros(sharpened.shape))
+            sharpened = np.minimum(sharpened, 255 * np.ones(sharpened.shape))
+            sharpened = sharpened.round().astype(np.uint8)
+            if threshold > 0:
+                low_contrast_mask = np.absolute(image - blurred) < threshold
+                np.copyto(sharpened, image, where=low_contrast_mask)
+            return sharpened
+
+        def isMenuOpened(self):
+            image = np.load("resources\\ingameMenu.npy")
+            return(True if pyautogui.locateCenterOnScreen(image, confidence=0.7, region=(0,0, DISPLAY_SIZE[0] - (DISPLAY_SIZE[0]-300), DISPLAY_SIZE[1]), grayscale=True) != None else False)
+            
+
         versionNumber = requests.get("https://api.github.com/repos/Nezzquikk/NWMM-New-World-MiniMap/releases/latest").json()['name']
-        if(versionNumber <= RELEASE_VERSION[1]):
+        if(versionNumber <= COMPILED_VERSION[1]):
             print(Panel(f"[bold green]YOUR VERSION IS UP-TO-DATE\nHAVE FUN[/bold green]"))
         else:
             print(Panel(f"[bold red]YOUR VERSION IS NOT UP-TO-DATE\nPLEASE UPDATE\n[/bold red][bold blue]Visit https://api.github.com/repos/Nezzquikk/NWMM-New-World-MiniMap/releases/latest[/bold blue]"))
         while True:
-            def unsharp_mask(image, kernel_size=(5, 5), sigma=1.0, amount=1.0, threshold=0):
-                blurred = cv2.GaussianBlur(image, kernel_size, sigma)
-                sharpened = float(amount + 1) * image - float(amount) * blurred
-                sharpened = np.maximum(sharpened, np.zeros(sharpened.shape))
-                sharpened = np.minimum(sharpened, 255 * np.ones(sharpened.shape))
-                sharpened = sharpened.round().astype(np.uint8)
-                if threshold > 0:
-                    low_contrast_mask = np.absolute(image - blurred) < threshold
-                    np.copyto(sharpened, image, where=low_contrast_mask)
-                return sharpened
-
-
             hwnd = win32gui.FindWindow(None, 'New World')
             if hwnd == 0:
                 try:
@@ -119,14 +129,13 @@ class Worker(QObject):
                 print(Panel(f"[bold]Position detected:[/bold] [bold green] {playerLocation} [/bold green]"))
                 time.sleep(0.1)
                 self.lastCoordinate = playerLocation[0]
-                self.progress.emit(playerLocation[0])
+                self.progress.emit({"location":playerLocation[0], "isMenuOpened": isMenuOpened(im)})
             except InterruptedError as e:
-                print("yy")
                 print(Panel(f"[bold red]{e}!"))
             except Exception as e:
                 print(Panel(f"[bold red]Position not found!: {playerLocation}"))
                 time.sleep(0.1)
-                self.progress.emit(self.lastCoordinate)
+                self.progress.emit({"location":self.lastCoordinate, "isMenuOpened": isMenuOpened(im)})
             
 
 class WebEnginePage(QWebEnginePage):
@@ -142,11 +151,13 @@ class MainWindow(QMainWindow):
         self.ISCIRCULAR = False
         self.STAYONTOP = True
         self.ISFRAMED = True
+        self.HAS_USER_FIXED_WINDOW = False
+        self.IS_WINDOW_FIXED = False
         self.initUI()
         """ Tesseract Path """
-        pytesseract.pytesseract.tesseract_cmd = "Tesseract-OCR\\tesseract.exe" if RELEASE_VERSION[0] == True else TESSERACT_PATH
+        pytesseract.pytesseract.tesseract_cmd = "Tesseract-OCR\\tesseract.exe" if COMPILED_VERSION[0] == True else TESSERACT_PATH
         """ if you want executable (Tesseract required in folder) use pyInstaller"""
-        # pyinstaller -F --add-data "Tesseract-OCR;Tesseract-OCR" MiniMap.py || "Tesseract-OCR\\tesseract.exe" 
+        # pyinstaller -F --add-data "Tesseract-OCR;Tesseract-OCR" MiniMap.py --add-data "resources;resources" || "Tesseract-OCR\\tesseract.exe" 
         self.webview = QWebEngineView()
         webpage = WebEnginePage(self.webview)
         self.useragent = QWebEngineProfile(self.webview)
@@ -168,6 +179,7 @@ class MainWindow(QMainWindow):
    
     def onPosEvent(self, pos):
         if pos == "Key.delete":
+            self.HAS_USER_FIXED_WINDOW = True
             self.disableInterfaceUseability()
         elif pos == "Key.insert":
             self.enableInterfaceUseability()
@@ -178,21 +190,25 @@ class MainWindow(QMainWindow):
     
 
     def disableInterfaceUseability(self):
-        print(Panel(f"[bold yellow]Disabled Interface[/bold yellow]"))
-        self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
-        self.setAttribute(Qt.WA_NoChildEventsForParent, True)
-        self.setWindowFlags(Qt.X11BypassWindowManagerHint|Qt.WindowStaysOnTopHint)
-        self.setAttribute(Qt.WA_TranslucentBackground, True)
-        self.show()
+        if self.IS_WINDOW_FIXED == False:
+            self.IS_WINDOW_FIXED = True
+            print(Panel(f"[bold yellow]Disabled Interface[/bold yellow]"))
+            self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+            self.setAttribute(Qt.WA_NoChildEventsForParent, True)
+            self.setWindowFlags(Qt.X11BypassWindowManagerHint|Qt.WindowStaysOnTopHint)
+            self.setAttribute(Qt.WA_TranslucentBackground, True)
+            self.show()
 
 
     def enableInterfaceUseability(self):
-        print(Panel(f"[bold yellow]Enabled Interface[/bold yellow]"))
-        self.setWindowFlags(self.defaultFlags)
-        self.setAttribute(Qt.WA_TransparentForMouseEvents, False)
-        self.setAttribute(Qt.WA_NoChildEventsForParent, False)
-        self.setAttribute(Qt.WA_TranslucentBackground, False)
-        self.show()
+        if self.IS_WINDOW_FIXED == True:
+            self.IS_WINDOW_FIXED = False
+            print(Panel(f"[bold yellow]Enabled Interface[/bold yellow]"))
+            self.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+            self.setAttribute(Qt.WA_NoChildEventsForParent, False)
+            self.setAttribute(Qt.WA_TranslucentBackground, False)
+            self.setWindowFlags(self.defaultFlags)
+            self.show()
         
     
     def initUI(self, isWindowFramed=True):
@@ -309,8 +325,19 @@ class MainWindow(QMainWindow):
         self.worker.finished.connect(self.thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
         self.thread.finished.connect(self.thread.deleteLater)
-        self.worker.progress.connect(self.setMarker)
+        self.worker.progress.connect(self.processThread)
         self.thread.start()
+
+
+    def processThread(self, imageObjects):
+        position = imageObjects['location']
+        isMenuOpened = imageObjects['isMenuOpened']
+        self.setMarker(position)
+        if isMenuOpened == True and self.HAS_USER_FIXED_WINDOW == True:
+            if self.IS_WINDOW_FIXED == True:
+                self.enableInterfaceUseability()
+        elif isMenuOpened == False and self.HAS_USER_FIXED_WINDOW == True:
+            self.disableInterfaceUseability()
     
 
     def follow_marker(self, location):
