@@ -20,7 +20,7 @@
 6. Enable "Show FPS" in Settings -> Visuals
 8. Run Script
 9. Configurate your Map
-10. Press "Remove" on your Keyboard to enable Overlaying, disable it with pressing "Insert" twice.
+10. Press "Remove" on your Keyboard to enable Overlaying, NWMM automatically detects your ingame map and hence disables overlaying!
 
 # Bugs
 * Bad OCR in daylight
