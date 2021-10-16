@@ -3,7 +3,7 @@
 #----------------------------------------------------------------------------
 # Created By  : Nezzquikk
 # Created Date: 2021/10/13
-# version ='0.9.0'
+# version ='1.0.0'
 # ---------------------------------------------------------------------------
 """ This is an interactive MiniMap that is reading player position with
     PyTesseract OCR and visualizing it on a New World Map with live marker """ 
@@ -11,31 +11,60 @@
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEngineProfile, QWebEnginePage
 from PyQt5.QtWebEngineWidgets import *
 from PyQt5.QtCore          import *
+from rich.console import Console
 from PyQt5.QtGui        import *
 from PyQt5.QtWidgets import *
+from rich.panel import Panel
+from pynput import keyboard
 from win32 import win32gui
 from ctypes import windll
+from rich import print
 from PIL import Image
 import numpy as np
 import pytesseract
+import requests
 import win32ui
+import time
 import sys
 import cv2
 import re
 # ---------------------------------------------------------------------------
-
+console = Console()
+RELEASE_VERSION = [False, "v1.0.0"]
 TESSERACT_PATH = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 DISPLAY_SIZE = [windll.user32.GetSystemMetrics(0),windll.user32.GetSystemMetrics(1)]
 SIZE_OF_MINIMAP = (250,250)
 
 """ PyQT5 is blocking main thread for rendering GUI thus using QThread and QWorker
     for processing OCR and player positioning """
+class MyGetPosThread(QThread):
+    positionSign  = pyqtSignal(str)
+    def __init__(self, parent):
+        QThread.__init__(self, parent)
+
+    def addPositionEventListener(self, listener):
+        self.positionSign.connect(listener)
+
+    def on_press(self, key):
+        self.positionSign.emit(str(key))
+
+    def run(self):
+        with keyboard.Listener(on_press=self.on_press) as listener:
+            listener.join()
+
+
 class Worker(QObject):
     finished = pyqtSignal()
     progress = pyqtSignal(object)
     lastCoordinate = [0,0]
 
+
     def run(self):
+        versionNumber = requests.get("https://api.github.com/repos/Nezzquikk/NWMM-New-World-MiniMap/releases/latest").json()['name']
+        if(versionNumber <= RELEASE_VERSION[1]):
+            print(Panel(f"[bold green]YOUR VERSION IS UP-TO-DATE\nHAVE FUN[/bold green]"))
+        else:
+            print(Panel(f"[bold red]YOUR VERSION IS NOT UP-TO-DATE\nPLEASE UPDATE\n[/bold red][bold blue]Visit https://api.github.com/repos/Nezzquikk/NWMM-New-World-MiniMap/releases/latest[/bold blue]"))
         while True:
             def unsharp_mask(image, kernel_size=(5, 5), sigma=1.0, amount=1.0, threshold=0):
                 blurred = cv2.GaussianBlur(image, kernel_size, sigma)
@@ -73,7 +102,6 @@ class Worker(QObject):
                 (bmpinfo['bmWidth'], bmpinfo['bmHeight']),
                 bmpstr, 'raw', 'BGRX', 0, 1)
             w, h = im.size
-            """ OCR section for 1920 x 1080 """
             screenshot = im.crop((DISPLAY_SIZE[0] - 268, 19, DISPLAY_SIZE[0], 35))
             win32gui.DeleteObject(saveBitMap.GetHandle())
             saveDC.DeleteDC()
@@ -82,48 +110,91 @@ class Worker(QObject):
             screenshot = np.array(screenshot) 
             screenshot = cv2.inRange(np.array(screenshot), np.array([100, 100, 100]), np.array([255, 255, 255]))
             screenshot = unsharp_mask(screenshot)
+            # cv2.imwrite('image.png', screenshot)
             playerLocation = pytesseract.image_to_string(screenshot,  config='-c tessedit_char_whitelist=[].,0123456789')
-            print("PlayerPosition:", playerLocation)
             try:
                 playerLocation = re.findall(r'\[(\d{1,5})[,.]{1,2}\d{1,3}[,.]{1,2}(\d{1,5})[,.]', playerLocation) 
+                if int(playerLocation[0][0]) < 4300 or int(playerLocation[0][0]) > 14200 or int(playerLocation[0][1]) < -100 or int(playerLocation[0][1]) > 10000:
+                    raise InterruptedError("INTERCEPTED OUT OF MAP JUMP")
+                print(Panel(f"[bold]Position detected:[/bold] [bold green] {playerLocation} [/bold green]"))
+                time.sleep(0.1)
                 self.lastCoordinate = playerLocation[0]
                 self.progress.emit(playerLocation[0])
-            except:
-                print("Coordinates not found!")
+            except InterruptedError as e:
+                print("yy")
+                print(Panel(f"[bold red]{e}!"))
+            except Exception as e:
+                print(Panel(f"[bold red]Position not found!: {playerLocation}"))
+                time.sleep(0.1)
                 self.progress.emit(self.lastCoordinate)
+            
 
-
+class WebEnginePage(QWebEnginePage):
+    def javaScriptConsoleMessage(self, level, message, lineNumber, sourceID):
+        pass
 class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
+        self.setWindowFlags(Qt.WindowStaysOnTopHint)
         self.setWindowTitle("NWMM")
+        self.defaultFlags = self.windowFlags()
         self.AUTO_FOLLOW_ON = True
         self.ISCIRCULAR = False
         self.STAYONTOP = True
         self.ISFRAMED = True
         self.initUI()
         """ Tesseract Path """
-        pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
-        # pytesseract.pytesseract.tesseract_cmd = "Tesseract-OCR\\tesseract.exe"
+        pytesseract.pytesseract.tesseract_cmd = "Tesseract-OCR\\tesseract.exe" if RELEASE_VERSION[0] == True else TESSERACT_PATH
         """ if you want executable (Tesseract required in folder) use pyInstaller"""
         # pyinstaller -F --add-data "Tesseract-OCR;Tesseract-OCR" MiniMap.py || "Tesseract-OCR\\tesseract.exe" 
         self.webview = QWebEngineView()
-        webpage = QWebEnginePage(self.webview)
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setWindowFlags(Qt.WindowStaysOnTopHint)
+        webpage = WebEnginePage(self.webview)
         self.useragent = QWebEngineProfile(self.webview)
         self.useragent.defaultProfile().setHttpUserAgent("Mozilla/5.0 (Linux; Android 4.2.1; en-us; Nexus 5 Build/JOP40D) AppleWebKit/535.19 (KHTML, like Gecko; googleweblight) Chrome/38.0.1025.166 Mobile Safari/535.19")
         self.webview.setPage(webpage)
         self.webview.setUrl(QUrl("https://www.newworld-map.com/#/"))
         self.setCentralWidget(self.webview)
+        # self.setCentralWidget(self.webview)
         self.webview.loadFinished.connect(self.onLoadFinished)
-        self.webview.setContextMenuPolicy(Qt.CustomContextMenu)
         self.latestCoordinate = [0,0]
         self.webview.setContextMenuPolicy(Qt.CustomContextMenu)
         self.webview.customContextMenuRequested.connect(self.on_context_menu)
         self.initContextMenu()
+        # self.disableInterfaceUseability()
+        self._get_pos_thread = MyGetPosThread(self)
+        self._get_pos_thread.addPositionEventListener(self.onPosEvent)
+        self._get_pos_thread.start()
+
+   
+    def onPosEvent(self, pos):
+        if pos == "Key.delete":
+            self.disableInterfaceUseability()
+        elif pos == "Key.insert":
+            self.enableInterfaceUseability()
+            
+
+    def javaScriptConsoleMessage(self, level, msg, line, sourceID):
+        pass
+    
+
+    def disableInterfaceUseability(self):
+        print(Panel(f"[bold yellow]Disabled Interface[/bold yellow]"))
+        self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self.setAttribute(Qt.WA_NoChildEventsForParent, True)
+        self.setWindowFlags(Qt.X11BypassWindowManagerHint|Qt.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
+        self.show()
+
+
+    def enableInterfaceUseability(self):
+        print(Panel(f"[bold yellow]Enabled Interface[/bold yellow]"))
+        self.setWindowFlags(self.defaultFlags)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+        self.setAttribute(Qt.WA_NoChildEventsForParent, False)
+        self.setAttribute(Qt.WA_TranslucentBackground, False)
+        self.show()
         
-        
+    
     def initUI(self, isWindowFramed=True):
         radius = 200.0 if self.ISCIRCULAR == True else 0.0
         self.painterPath = QPainterPath()
@@ -132,8 +203,6 @@ class MainWindow(QMainWindow):
             self.painterPath.addRoundedRect(QRectF(self.rect()), radius, radius)
         mask = QRegion(self.painterPath.toFillPolygon().toPolygon())
         self.setMask(mask)
-        # self.setDisabled(True)
-        # self.setAttribute(Qt.WA_X11DoNotAcceptFocus)
 
 
     def initContextMenu(self):
@@ -159,9 +228,11 @@ class MainWindow(QMainWindow):
     def toggleViewMode(self):
         self.ISCIRCULAR = not self.ISCIRCULAR
         if self.ISCIRCULAR == True:
+            print(Panel(f"[bold yellow]Changed to Circular[/bold yellow]"))
             self.initUI(isWindowFramed=False)
-            self.toggle_viewmode_button.setText('Change to Rectangular') 
+            self.toggle_viewmode_button.setText('Change to Rectangle') 
         else:
+            print(Panel(f"[bold yellow]Changed to Rectangle[/bold yellow]"))
             self.initUI(isWindowFramed=False)
             self.toggle_viewmode_button.setText('Change to Circular')
         self.show()
@@ -170,33 +241,36 @@ class MainWindow(QMainWindow):
     def toggleWindowFrame(self):
         self.ISFRAMED = not self.ISFRAMED
         if self.ISFRAMED == True:
+            print(Panel(f"[bold yellow]Enabled Window Frame[/bold yellow]"))
             self.toggle_WindowFrame_button.setText('Disable Window Frame') 
             self.initUI(isWindowFramed=True)
         else:
+            print(Panel(f"[bold yellow]Disabled Window Frame[/bold yellow]"))
             self.toggle_WindowFrame_button.setText('Enable Window Frame') 
             self.initUI(isWindowFramed=False)
         
         self.show()
         
         
-
     def toggleStayOnTop(self):
         self.STAYONTOP = not self.STAYONTOP
         if self.STAYONTOP == True:
+            print(Panel(f"[bold yellow]Enabled Stay on Top[/bold yellow]"))
             self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
-            self.toggle_stayOnTop_button.setText('Disable Stay On Top') 
+            self.toggle_stayOnTop_button.setText('Disable Stay on Top') 
         else:
+            print(Panel(f"[bold yellow]Disabled Stay on Top[/bold yellow]"))
             self.setWindowFlags(self.windowFlags() & ~Qt.WindowStaysOnTopHint)
             self.toggle_stayOnTop_button.setText('Enable Stay on Top')
         self.show()
         
 
-
     def toggleAutoFollow(self):
-        print(self.AUTO_FOLLOW_ON)
         if self.AUTO_FOLLOW_ON == True:
+            print(Panel(f"[bold yellow]Disabled auto-follow[/bold yellow]"))
             self.toggle_follow_button.setText('Enable auto-follow') 
         else:
+            print(Panel(f"[bold yellow]Enabled auto-follow[/bold yellow]"))
             self.toggle_follow_button.setText('Disable auto-follow')
         self.AUTO_FOLLOW_ON = not self.AUTO_FOLLOW_ON
 
