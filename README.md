@@ -3,7 +3,7 @@
 # Features:
 * Automatically grabs position from "New World" Instance
 * Live visualisation of player position on MiniMap
-* Circular & rectangular Map
+* Circular MiniMap with Borders & working Buttons
 * Stay-On-Top making the Map look like an Overlay!
 * Automatically detects opened ingame menu for disabling overlaying
 * Informative and structured debugging console
@@ -23,15 +23,21 @@
 5. Start & Log into Game
 6. Enable "Show FPS" in Settings -> Visuals
 8. Run Script
-9. Configurate your Map
-10. Press "Remove" on your Keyboard to enable Overlaying, NWMM automatically detects your ingame map and hence disables overlaying!
+9. Place the Map where you want it to be
+10. Have Fun!
+
+Note:
+I have implemented an overlaying-mode so you don't loose anymore focus to the Map Window.
+Press "Delete"-Key on your Keyboard to activate overlaying-mode
+Press "Insert"-Key on your Keyboard to manually deactive overlaying-mode
+On default: Automatic toggling of Overlaying-mode when pressing "ESC" (Ingame Menu)
 
 # Bugs
 * Bad OCR in daylight
 
-INFO: It may be possible that one or the other library I use in this project is not compatible with newest version of Python
+INFO: It may be possible that one or the other library I use in this project (like PyWin32) is not compatible with newest version of Python
 I recommend using Python 3.8 (I myself use Python 3.8.8)
-Please downgrade or use the compiled version of this MiniMap.
+Please downgrade or use the compiled executable version of this MiniMap.
 
 # OCR-Optimization
 A few filters applied ontop of the image crop to achieve better daylight OCR results<br>
