@@ -59,3 +59,4 @@ https://user-images.githubusercontent.com/62097381/137976408-4b29911c-b928-4a27-
 # Credits
 * Auto-Follow (credits to @seler)
 * Map provided by StudioLoot (@https://studioloot.com/ / @https://www.newworld-map.com/#/)
+* MiniMap Borders by kindland, modified by me
