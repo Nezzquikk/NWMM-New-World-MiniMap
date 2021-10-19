@@ -10,7 +10,6 @@
 * Auto-version Checker upon startup
 * Configurable
 * Auto-Follow (credits to @seler)
-* Resizeable
 * Cross-Platform (untested)
 
 # How to use:
@@ -26,11 +25,11 @@
 9. Place the Map where you want it to be
 10. Have Fun!
 
-Note:
-I have implemented an overlaying-mode so you don't loose anymore focus to the Map Window.
-Press "Delete"-Key on your Keyboard to activate overlaying-mode
-Press "Insert"-Key on your Keyboard to manually deactive overlaying-mode
-On default: Automatic toggling of Overlaying-mode when pressing "ESC" (Ingame Menu)
+#### Note:
+I have implemented an overlaying-mode so you wont loose focus to the Map Window.<br>
+Press "Delete"-Key on your Keyboard to activate overlaying-mode<br>
+Press "Insert"-Key on your Keyboard to manually deactive overlaying-mode<br>
+On default: Automatic toggling of Overlaying-mode when pressing "ESC" (Ingame Menu)<br>
 
 # Bugs
 * Bad OCR in daylight
